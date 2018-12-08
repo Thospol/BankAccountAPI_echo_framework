@@ -2,8 +2,10 @@ package main
 
 import (
 	"bankaccountapi/model"
+	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 
 	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -26,7 +28,7 @@ type Server struct {
 type UserService interface {
 	FindAllUser() ([]model.User, error)
 	FindByIDUser(id string) (model.User, error)
-	InsertUser(UserCreate *model.User) error
+	InsertUser(UserCreate *model.User) (*model.User, error)
 }
 
 //UserServiceImplement is struct
@@ -49,10 +51,10 @@ func (u *UserServiceImplement) FindByIDUser(id string) (model.User, error) {
 }
 
 //InsertUser for InsertUser
-func (u *UserServiceImplement) InsertUser(UserCreate *model.User) error {
+func (u *UserServiceImplement) InsertUser(UserCreate *model.User) (*model.User, error) {
 	UserCreate.ID = bson.NewObjectId()
 	err := u.db.C(COLLECTIONUser).Insert(&UserCreate)
-	return err
+	return UserCreate, err
 }
 
 var (
@@ -134,6 +136,7 @@ func (m *DataObjectAccess) FindAllUserEndPoint(c echo.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	PrintLog(users)
 	return c.JSON(http.StatusOK, users)
 }
 
@@ -144,6 +147,7 @@ func (m *DataObjectAccess) FindByIDUserEndPoint(c echo.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	PrintLog(user)
 	return c.JSON(http.StatusOK, user)
 }
 
@@ -153,9 +157,15 @@ func (m *DataObjectAccess) InsertUserEndPoint(c echo.Context) (err error) {
 	if err := c.Bind(u); err != nil {
 		return err
 	}
-	if err := m.userService.InsertUser(u); err != nil {
+	user, err := m.userService.InsertUser(u)
+	if err != nil {
 		return err
 	}
-
+	PrintLog(user)
 	return c.JSON(http.StatusCreated, map[string]string{"result": "Create Success"})
+}
+
+func PrintLog(n interface{}) {
+	b, _ := json.MarshalIndent(n, "", "\t")
+	os.Stdout.Write(b)
 }
