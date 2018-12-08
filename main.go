@@ -90,14 +90,12 @@ func SetUpRoute(d *DataObjectAccess) {
 		if username == "" && password == "" {
 			return false, nil
 		}
-		users, err := dao.userService.FindAllUser()
+		findUser, err := dao.userService.FindByIDUser(c.Param("id"))
 		if err != nil {
 			return false, err
 		}
-		for _, userlist := range users {
-			if userlist.Username == username && userlist.Password == password {
-				return true, nil
-			}
+		if findUser.Username == username && findUser.Password == password {
+			return true, nil
 		}
 		return false, nil
 	}))
