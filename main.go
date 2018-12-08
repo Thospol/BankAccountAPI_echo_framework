@@ -41,6 +41,11 @@ var (
 	config = Config{}
 	s      = Server{}
 	e      = echo.New()
+	dao    = &DataObjectAccess{
+		userService: &UserServiceImplement{
+			db: dbs,
+		},
+	}
 )
 
 const (
@@ -58,11 +63,6 @@ func init() {
 }
 
 func main() {
-	dao := &DataObjectAccess{
-		userService: &UserServiceImplement{
-			db: dbs,
-		},
-	}
 	SetUpRoute(dao)
 }
 
@@ -74,8 +74,25 @@ func SetUpRoute(d *DataObjectAccess) {
 	e.Use(middleware.Recover())
 
 	// Routes
+	users := e.Group("/users")
+	users.GET("", d.FindAllUser)
+
 	user := e.Group("/user")
-	user.GET("", d.FindAllUser)
+	user.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+		if username == "" && password == "" {
+			return false, nil
+		}
+		users, err := dao.userService.FindAllUser()
+		if err != nil {
+			return false, err
+		}
+		for _, userlist := range users {
+			if userlist.Username == username && userlist.Password == password {
+				return true, nil
+			}
+		}
+		return false, nil
+	}))
 
 	// Start Server
 	e.Logger.Fatal(e.Start(":1323"))
