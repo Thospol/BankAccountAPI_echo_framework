@@ -23,6 +23,7 @@ type Server struct {
 //UserService is interface
 type UserService interface {
 	FindAllUser() ([]model.User, error)
+	FindByIDUser(id string) (model.User, error)
 }
 
 //TodoServiceImp is struct
@@ -34,6 +35,12 @@ func (u *UserServiceImplement) FindAllUser() ([]model.User, error) {
 	var users []model.User
 	err := u.db.C(COLLECTIONUser).Find(bson.M{}).All(&users)
 	return users, err
+}
+
+func (u *UserServiceImplement) FindByIDUser(id string) (model.User, error) {
+	var user model.User
+	err := u.db.C(COLLECTIONUser).FindId(bson.ObjectIdHex(id)).One(&user)
+	return user, err
 }
 
 var (
@@ -75,7 +82,8 @@ func SetUpRoute(d *DataObjectAccess) {
 
 	// Routes
 	users := e.Group("/users")
-	users.GET("", d.FindAllUser)
+	users.GET("", d.FindAllUserEndPoint)
+	users.GET("/:id", d.FindByIdUserEndPoint)
 
 	user := e.Group("/user")
 	user.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
@@ -109,10 +117,19 @@ func (m *Server) Connect() *mgo.Database {
 }
 
 //FindAllUser is FindAllUser
-func (m *DataObjectAccess) FindAllUser(c echo.Context) (err error) {
+func (m *DataObjectAccess) FindAllUserEndPoint(c echo.Context) (err error) {
 	users, err := m.userService.FindAllUser()
 	if err != nil {
-		return
+		return err
 	}
 	return c.JSON(http.StatusOK, users)
+}
+
+func (m *DataObjectAccess) FindByIdUserEndPoint(c echo.Context) (err error) {
+
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, user)
 }
