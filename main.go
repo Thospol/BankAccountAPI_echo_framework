@@ -39,6 +39,7 @@ type UserService interface {
 //BankAccountService is struct
 type BankAccountService interface {
 	CreateBankAccount(bankaccountReq *model.BankAccount, user model.User) ([]model.BankAccount, error)
+	FindAllBankAccount(user model.User) []model.BankAccount
 }
 
 //UserServiceImplement is struct
@@ -77,6 +78,14 @@ func (b *BankAccountServiceImplement) CreateBankAccount(bankaccountReq *model.Ba
 	user.UserBankAccount = append(user.UserBankAccount, *bankaccountReq)
 	err = b.db.C(COLLECTIONUser).UpdateId(user.ID, &user)
 	return user.UserBankAccount, err
+}
+
+func (b *BankAccountServiceImplement) FindAllBankAccount(user model.User) []model.BankAccount {
+	var bankAccount []model.BankAccount
+	for _, userBankAccountList := range user.UserBankAccount {
+		bankAccount = append(bankAccount, userBankAccountList)
+	}
+	return bankAccount
 }
 
 //FindAllUser for FindAllUser
@@ -192,6 +201,7 @@ func SetUpRoute(d *DataObjectAccess) {
 	user.PUT("/:id", d.UpdateUserEndPoint)
 	user.DELETE("/:id", d.DeleteUserEndPoint)
 	user.POST("/:id/bankAccount", d.CreateBankAccountEndPoint)
+	user.GET("/:id/bankAccount", d.FindAllBankAccountEndPoint)
 	// Start Server
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -294,6 +304,15 @@ func (m *DataObjectAccess) CreateBankAccountEndPoint(c echo.Context) (err error)
 
 	PrintLog(userResp)
 	return c.JSON(http.StatusOK, map[string]string{"result": "Create Success"})
+}
+func (m *DataObjectAccess) FindAllBankAccountEndPoint(c echo.Context) (err error) {
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return err
+	}
+	bankAccountResp := m.bankAccountService.FindAllBankAccount(user)
+	PrintLog(bankAccountResp)
+	return c.JSON(http.StatusOK, bankAccountResp)
 }
 
 //ValidateUser for check username and password
