@@ -30,6 +30,7 @@ type UserService interface {
 	FindByIDUser(id string) (model.User, error)
 	InsertUser(UserCreate *model.User) (*model.User, error)
 	UpdateUser(UserUpdate *model.User, user model.User) (*model.User, error)
+	DeleteUser(user model.User) (*model.User, error)
 }
 
 //UserServiceImplement is struct
@@ -88,6 +89,12 @@ func (u *UserServiceImplement) UpdateUser(UserUpdate *model.User, user model.Use
 	return UserUpdate, err
 }
 
+//DeleteUser for DeleteUser
+func (u *UserServiceImplement) DeleteUser(user model.User) (*model.User, error) {
+	err := u.db.C(COLLECTIONUser).Remove(&user)
+	return &user, err
+}
+
 var (
 	dbs    *mgo.Database
 	config = Config{}
@@ -135,7 +142,7 @@ func SetUpRoute(d *DataObjectAccess) {
 	user.Use(middleware.BasicAuth(d.ValidateUser))
 	user.GET("/:id", d.FindByIDUserEndPoint)
 	user.PUT("/:id", d.UpdateUserEndPoint)
-
+	user.DELETE("/:id", d.DeleteUserEndPoint)
 	// Start Server
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -201,6 +208,20 @@ func (m *DataObjectAccess) UpdateUserEndPoint(c echo.Context) (err error) {
 	}
 	PrintLog(userResp)
 	return c.JSON(http.StatusCreated, map[string]string{"result": "Update Success"})
+}
+
+//DeleteUserEndPoint is DeleteUserEndPoint
+func (m *DataObjectAccess) DeleteUserEndPoint(c echo.Context) (err error) {
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return err
+	}
+	userResp, err := m.userService.DeleteUser(user)
+	if err != nil {
+		return err
+	}
+	PrintLog(userResp)
+	return c.JSON(http.StatusCreated, map[string]string{"result": "Delete Success"})
 }
 
 //ValidateUser for check username and password
