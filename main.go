@@ -101,19 +101,7 @@ func SetUpRoute(d *DataObjectAccess) {
 	users.POST("", d.InsertUserEndPoint)
 
 	user := e.Group("/user")
-	user.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
-		if username == "" && password == "" {
-			return false, nil
-		}
-		findUser, err := dao.userService.FindByIDUser(c.Param("id"))
-		if err != nil {
-			return false, err
-		}
-		if findUser.Username == username && findUser.Password == password {
-			return true, nil
-		}
-		return false, nil
-	}))
+	user.Use(middleware.BasicAuth(d.ValidateUser))
 	user.GET("/:id", d.FindByIDUserEndPoint)
 
 	// Start Server
@@ -165,6 +153,19 @@ func (m *DataObjectAccess) InsertUserEndPoint(c echo.Context) (err error) {
 	return c.JSON(http.StatusCreated, map[string]string{"result": "Create Success"})
 }
 
+//ValidateUser for check username and password
+func (m *DataObjectAccess) ValidateUser(username, password string, c echo.Context) (bool, error) {
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return false, err
+	}
+	if user.Username == username && user.Password == password {
+		return true, nil
+	}
+	return false, nil
+}
+
+//PrintLog for GetLog
 func PrintLog(n interface{}) {
 	b, _ := json.MarshalIndent(n, "", "\t")
 	os.Stdout.Write(b)
