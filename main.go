@@ -3,6 +3,8 @@ package main
 import (
 	"bankaccountapi/model"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,7 +17,8 @@ import (
 
 //DataObjectAccess is dao
 type DataObjectAccess struct {
-	userService UserService
+	userService        UserService
+	bankAccountService BankAccountService
 }
 
 //Server for set Server and Database
@@ -33,9 +36,47 @@ type UserService interface {
 	DeleteUser(user model.User) (*model.User, error)
 }
 
+//BankAccountService is struct
+type BankAccountService interface {
+	CreateBankAccount(bankaccountReq *model.BankAccount, user model.User) ([]model.BankAccount, error)
+}
+
 //UserServiceImplement is struct
 type UserServiceImplement struct {
 	db *mgo.Database
+}
+
+//BankAccountServiceImplement is struct
+type BankAccountServiceImplement struct {
+	db *mgo.Database
+}
+
+//CreateBankAccount for CreateBankAccount
+func (b *BankAccountServiceImplement) CreateBankAccount(bankaccountReq *model.BankAccount, user model.User) ([]model.BankAccount, error) {
+	var err error
+
+	if bankaccountReq.BankName == "" {
+		return nil, errors.New("please require BankName")
+	}
+
+	if bankaccountReq.AccountNumber == "" {
+		return nil, errors.New("please require BankName")
+	}
+
+	if bankaccountReq.Balance == 0 {
+		return nil, errors.New("please require BankName")
+	}
+
+	for _, bankAccountOfuser := range user.UserBankAccount {
+		if bankAccountOfuser.AccountNumber == bankaccountReq.AccountNumber {
+			return nil, errors.New("AccountNumber Dupicate")
+		}
+	}
+	bankaccountReq.ID = bson.NewObjectId()
+
+	user.UserBankAccount = append(user.UserBankAccount, *bankaccountReq)
+	err = b.db.C(COLLECTIONUser).UpdateId(user.ID, &user)
+	return user.UserBankAccount, err
 }
 
 //FindAllUser for FindAllUser
@@ -54,8 +95,12 @@ func (u *UserServiceImplement) FindByIDUser(id string) (model.User, error) {
 
 //InsertUser for InsertUser
 func (u *UserServiceImplement) InsertUser(UserCreate *model.User) (*model.User, error) {
+	var err error
+	if UserCreate.FirstName == "" || UserCreate.LastName == "" || UserCreate.Username == "" || UserCreate.Password == "" || UserCreate.IDcard == "" || UserCreate.Tel == "" || UserCreate.Email == "" || UserCreate.Age == 0 {
+		return nil, errors.New("please require All Field in User")
+	}
 	UserCreate.ID = bson.NewObjectId()
-	err := u.db.C(COLLECTIONUser).Insert(&UserCreate)
+	err = u.db.C(COLLECTIONUser).Insert(&UserCreate)
 	return UserCreate, err
 }
 
@@ -119,6 +164,9 @@ func init() {
 		userService: &UserServiceImplement{
 			db: dbs,
 		},
+		bankAccountService: &BankAccountServiceImplement{
+			db: dbs,
+		},
 	}
 }
 
@@ -143,6 +191,7 @@ func SetUpRoute(d *DataObjectAccess) {
 	user.GET("/:id", d.FindByIDUserEndPoint)
 	user.PUT("/:id", d.UpdateUserEndPoint)
 	user.DELETE("/:id", d.DeleteUserEndPoint)
+	user.POST("/:id/bankAccount", d.CreateBankAccountEndPoint)
 	// Start Server
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -182,12 +231,14 @@ func (m *DataObjectAccess) FindByIDUserEndPoint(c echo.Context) (err error) {
 func (m *DataObjectAccess) InsertUserEndPoint(c echo.Context) (err error) {
 	u := new(model.User)
 	if err := c.Bind(u); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("json: wrong params: %s", err))
 	}
+
 	user, err := m.userService.InsertUser(u)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
+
 	PrintLog(user)
 	return c.JSON(http.StatusCreated, map[string]string{"result": "Create Success"})
 }
@@ -200,11 +251,11 @@ func (m *DataObjectAccess) UpdateUserEndPoint(c echo.Context) (err error) {
 	}
 	u := new(model.User)
 	if err := c.Bind(u); err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("json: wrong params: %s", err))
 	}
 	userResp, err := m.userService.UpdateUser(u, user)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	PrintLog(userResp)
 	return c.JSON(http.StatusCreated, map[string]string{"result": "Update Success"})
@@ -221,7 +272,28 @@ func (m *DataObjectAccess) DeleteUserEndPoint(c echo.Context) (err error) {
 		return err
 	}
 	PrintLog(userResp)
-	return c.JSON(http.StatusCreated, map[string]string{"result": "Delete Success"})
+	return c.JSON(http.StatusOK, map[string]string{"result": "Delete Success"})
+}
+
+//CreateBankAccountEndPoint is CreateBankAccountEndPoint
+func (m *DataObjectAccess) CreateBankAccountEndPoint(c echo.Context) (err error) {
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return err
+	}
+
+	b := new(model.BankAccount)
+	if err := c.Bind(b); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("json: wrong params: %s", err))
+	}
+
+	userResp, err := m.bankAccountService.CreateBankAccount(b, user)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	PrintLog(userResp)
+	return c.JSON(http.StatusOK, map[string]string{"result": "Create Success"})
 }
 
 //ValidateUser for check username and password
