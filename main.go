@@ -29,6 +29,7 @@ type UserService interface {
 	FindAllUser() ([]model.User, error)
 	FindByIDUser(id string) (model.User, error)
 	InsertUser(UserCreate *model.User) (*model.User, error)
+	UpdateUser(UserUpdate *model.User, user model.User) (*model.User, error)
 }
 
 //UserServiceImplement is struct
@@ -55,6 +56,36 @@ func (u *UserServiceImplement) InsertUser(UserCreate *model.User) (*model.User, 
 	UserCreate.ID = bson.NewObjectId()
 	err := u.db.C(COLLECTIONUser).Insert(&UserCreate)
 	return UserCreate, err
+}
+
+//UpdateUser for UpdateUser
+func (u *UserServiceImplement) UpdateUser(UserUpdate *model.User, user model.User) (*model.User, error) {
+	if UserUpdate.FirstName != "" {
+		user.FirstName = UserUpdate.FirstName
+	}
+	if UserUpdate.LastName != "" {
+		user.LastName = UserUpdate.LastName
+	}
+	if UserUpdate.Username != "" {
+		user.Username = UserUpdate.Username
+	}
+	if UserUpdate.Password != "" {
+		user.Password = UserUpdate.Password
+	}
+	if UserUpdate.IDcard != "" {
+		user.IDcard = UserUpdate.IDcard
+	}
+	if UserUpdate.Age != 0 {
+		user.Age = UserUpdate.Age
+	}
+	if UserUpdate.Email != "" {
+		user.Email = UserUpdate.Email
+	}
+	if UserUpdate.Tel != "" {
+		user.Tel = UserUpdate.Tel
+	}
+	err := u.db.C(COLLECTIONUser).UpdateId(user.ID, &user)
+	return UserUpdate, err
 }
 
 var (
@@ -103,6 +134,7 @@ func SetUpRoute(d *DataObjectAccess) {
 	user := e.Group("/user")
 	user.Use(middleware.BasicAuth(d.ValidateUser))
 	user.GET("/:id", d.FindByIDUserEndPoint)
+	user.PUT("/:id", d.UpdateUserEndPoint)
 
 	// Start Server
 	e.Logger.Fatal(e.Start(":1323"))
@@ -151,6 +183,24 @@ func (m *DataObjectAccess) InsertUserEndPoint(c echo.Context) (err error) {
 	}
 	PrintLog(user)
 	return c.JSON(http.StatusCreated, map[string]string{"result": "Create Success"})
+}
+
+//UpdateUserEndPoint is UpdateUserEndPoint
+func (m *DataObjectAccess) UpdateUserEndPoint(c echo.Context) (err error) {
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return err
+	}
+	u := new(model.User)
+	if err := c.Bind(u); err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, err)
+	}
+	userResp, err := m.userService.UpdateUser(u, user)
+	if err != nil {
+		return err
+	}
+	PrintLog(userResp)
+	return c.JSON(http.StatusCreated, map[string]string{"result": "Update Success"})
 }
 
 //ValidateUser for check username and password
