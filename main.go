@@ -61,11 +61,11 @@ func (b *BankAccountServiceImplement) CreateBankAccount(bankaccountReq *model.Ba
 	}
 
 	if bankaccountReq.AccountNumber == "" {
-		return nil, errors.New("please require BankName")
+		return nil, errors.New("please require AccountNumber")
 	}
 
 	if bankaccountReq.Balance == 0 {
-		return nil, errors.New("please require BankName")
+		return nil, errors.New("please require Balance")
 	}
 
 	for _, bankAccountOfuser := range user.UserBankAccount {
