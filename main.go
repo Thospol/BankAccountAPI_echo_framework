@@ -40,6 +40,7 @@ type UserService interface {
 type BankAccountService interface {
 	CreateBankAccount(bankaccountReq *model.BankAccount, user model.User) ([]model.BankAccount, error)
 	FindAllBankAccount(user model.User) []model.BankAccount
+	DeleteBankAccount(user model.User, id string) (*model.BankAccount, error)
 }
 
 //UserServiceImplement is struct
@@ -80,12 +81,34 @@ func (b *BankAccountServiceImplement) CreateBankAccount(bankaccountReq *model.Ba
 	return user.UserBankAccount, err
 }
 
+//FindAllBankAccount for FindAllBankAccount
 func (b *BankAccountServiceImplement) FindAllBankAccount(user model.User) []model.BankAccount {
 	var bankAccount []model.BankAccount
 	for _, userBankAccountList := range user.UserBankAccount {
 		bankAccount = append(bankAccount, userBankAccountList)
 	}
 	return bankAccount
+}
+
+//DeleteBankAccount for DeleteBankAccount
+func (b *BankAccountServiceImplement) DeleteBankAccount(user model.User, id string) (*model.BankAccount, error) {
+	var bankAccounts []model.BankAccount
+	var bankAccount model.BankAccount
+	hasBankAccount := false
+	for _, userBankAccountList := range user.UserBankAccount {
+		if userBankAccountList.ID == bson.ObjectIdHex(id) {
+			bankAccount = userBankAccountList
+			hasBankAccount = true
+		} else {
+			bankAccounts = append(bankAccounts, userBankAccountList)
+		}
+	}
+	if !hasBankAccount {
+		return nil, errors.New("Not Have BankAccountID")
+	}
+	user.UserBankAccount = bankAccounts
+	err := b.db.C(COLLECTIONUser).UpdateId(user.ID, &user)
+	return &bankAccount, err
 }
 
 //FindAllUser for FindAllUser
@@ -202,6 +225,8 @@ func SetUpRoute(d *DataObjectAccess) {
 	user.DELETE("/:id", d.DeleteUserEndPoint)
 	user.POST("/:id/bankAccount", d.CreateBankAccountEndPoint)
 	user.GET("/:id/bankAccount", d.FindAllBankAccountEndPoint)
+	user.DELETE("/:id/bankAccount/:idBankAccount", d.DeleteBankAccountEndPoint)
+
 	// Start Server
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -305,6 +330,8 @@ func (m *DataObjectAccess) CreateBankAccountEndPoint(c echo.Context) (err error)
 	PrintLog(userResp)
 	return c.JSON(http.StatusOK, map[string]string{"result": "Create Success"})
 }
+
+//FindAllBankAccountEndPoint is FindAllBankAccountEndPoint
 func (m *DataObjectAccess) FindAllBankAccountEndPoint(c echo.Context) (err error) {
 	user, err := m.userService.FindByIDUser(c.Param("id"))
 	if err != nil {
@@ -312,7 +339,22 @@ func (m *DataObjectAccess) FindAllBankAccountEndPoint(c echo.Context) (err error
 	}
 	bankAccountResp := m.bankAccountService.FindAllBankAccount(user)
 	PrintLog(bankAccountResp)
-	return c.JSON(http.StatusOK, bankAccountResp)
+	return c.JSON(http.StatusOK, MapJSONBankAccount(bankAccountResp))
+}
+
+//DeleteBankAccountEndPoint is DeleteBankAccountEndPoint
+func (m *DataObjectAccess) DeleteBankAccountEndPoint(c echo.Context) (err error) {
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return err
+	}
+
+	bankAccountResp, err := m.bankAccountService.DeleteBankAccount(user, c.Param("idBankAccount"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	PrintLog(bankAccountResp)
+	return c.JSON(http.StatusOK, map[string]string{"result": "Delete Success"})
 }
 
 //ValidateUser for check username and password
@@ -331,4 +373,12 @@ func (m *DataObjectAccess) ValidateUser(username, password string, c echo.Contex
 func PrintLog(n interface{}) {
 	b, _ := json.MarshalIndent(n, "", "\t")
 	os.Stdout.Write(b)
+}
+
+//MapJSONBankAccount for MapJSONBankAccount
+func MapJSONBankAccount(bankAccount interface{}) interface{} {
+	dataJSON := map[string]interface{}{
+		"bank_account": bankAccount,
+	}
+	return dataJSON
 }
