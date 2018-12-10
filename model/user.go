@@ -27,3 +27,9 @@ type BankAccount struct {
 type Transaction struct {
 	Amount float64 `bson:"amount" json:"amount"`
 }
+
+type Tranfer struct {
+	Amount float64 `bson:"amount" json:"amount"`
+	From   string  `bson:"from" json:"from"`
+	To     string  `bson:"to" json:"to"`
+}

@@ -19,6 +19,7 @@ import (
 type DataObjectAccess struct {
 	userService        UserService
 	bankAccountService BankAccountService
+	tranferService     TranferService
 }
 
 //Server for set Server and Database
@@ -36,13 +37,18 @@ type UserService interface {
 	DeleteUser(user model.User) (*model.User, error)
 }
 
-//BankAccountService is struct
+//BankAccountService is interface
 type BankAccountService interface {
 	CreateBankAccount(bankaccountReq *model.BankAccount, user model.User) ([]model.BankAccount, error)
 	FindAllBankAccount(user model.User) []model.BankAccount
 	DeleteBankAccount(user model.User, id string) (*model.BankAccount, error)
 	DepositBankAccount(tranSaction *model.Transaction, user model.User, id string) (*model.BankAccount, error)
 	WithdrawBankAccount(tranSaction *model.Transaction, user model.User, id string) (*model.BankAccount, error)
+}
+
+//TranferService is interface
+type TranferService interface {
+	Tranfer(tranfer *model.Tranfer, userFrom model.User, userTo model.User) (*[]model.User, error)
 }
 
 //UserServiceImplement is struct
@@ -53,6 +59,74 @@ type UserServiceImplement struct {
 //BankAccountServiceImplement is struct
 type BankAccountServiceImplement struct {
 	db *mgo.Database
+}
+
+//TranferServiceImplement is struct
+type TranferServiceImplement struct {
+	db *mgo.Database
+}
+
+//Tranfer for Tranfer
+func (t *TranferServiceImplement) Tranfer(tranfer *model.Tranfer, userFrom model.User, userTo model.User) (*[]model.User, error) {
+	var err error
+	var user []model.User
+	if tranfer.Amount == 0 {
+		return nil, errors.New("please require Amount")
+	}
+	if tranfer.From == "" {
+		return nil, errors.New("please require AccountNumberFrom")
+	}
+	if tranfer.To == "" {
+		return nil, errors.New("please require AccountNumberTo")
+	}
+	var bankAccountForAccountFrom model.BankAccount
+	var bankAccountsForAccountFrom []model.BankAccount
+	hasBankAccountFrom := false
+	for _, userFromBankAccountList := range userFrom.UserBankAccount {
+		if userFromBankAccountList.AccountNumber == tranfer.From {
+			hasBankAccountFrom = true
+			bankAccountForAccountFrom = userFromBankAccountList
+			bankAccountForAccountFrom.Balance = bankAccountForAccountFrom.Balance - tranfer.Amount
+			bankAccountsForAccountFrom = append(bankAccountsForAccountFrom, bankAccountForAccountFrom)
+		} else {
+			bankAccountForAccountFrom = userFromBankAccountList
+			bankAccountsForAccountFrom = append(bankAccountsForAccountFrom, bankAccountForAccountFrom)
+		}
+	}
+
+	if hasBankAccountFrom == false {
+		return nil, errors.New("Not Have BankAccountID From")
+	}
+	userFrom.UserBankAccount = bankAccountsForAccountFrom
+	user = append(user, userFrom)
+
+	var bankAccountForAccountTo model.BankAccount
+	var bankAccountsForAccountTo []model.BankAccount
+	hasBankAccountTo := false
+	for _, userFromBankAccountList := range userTo.UserBankAccount {
+		if userFromBankAccountList.AccountNumber == tranfer.To {
+			hasBankAccountTo = true
+			bankAccountForAccountTo = userFromBankAccountList
+			bankAccountForAccountTo.Balance = bankAccountForAccountTo.Balance + tranfer.Amount
+			bankAccountsForAccountTo = append(bankAccountsForAccountTo, bankAccountForAccountTo)
+		} else {
+			bankAccountForAccountTo = userFromBankAccountList
+			bankAccountsForAccountTo = append(bankAccountsForAccountTo, bankAccountForAccountTo)
+		}
+	}
+
+	if hasBankAccountTo == false {
+		return nil, errors.New("Not Have BankAccountID To")
+	}
+	userTo.UserBankAccount = bankAccountsForAccountTo
+	user = append(user, userTo)
+
+	err = t.db.C(COLLECTIONUser).UpdateId(userFrom.ID, &userFrom)
+	if err != nil {
+		return nil, err
+	}
+	err = t.db.C(COLLECTIONUser).UpdateId(userTo.ID, &userTo)
+	return &user, err
 }
 
 //CreateBankAccount for CreateBankAccount
@@ -265,6 +339,9 @@ func init() {
 		bankAccountService: &BankAccountServiceImplement{
 			db: dbs,
 		},
+		tranferService: &TranferServiceImplement{
+			db: dbs,
+		},
 	}
 }
 
@@ -294,6 +371,9 @@ func SetUpRoute(d *DataObjectAccess) {
 	user.DELETE("/:id/bankAccount/:idBankAccount", d.DeleteBankAccountEndPoint)
 	user.PUT("/:id/bankAccount/:idBankAccount/deposit", d.DepositBankAccountEndPoint)
 	user.PUT("/:id/bankAccount/:idBankAccount/withdraw", d.WithDrawBankAccountEndPoint)
+
+	tranfers := e.Group("/tranfers")
+	tranfers.POST("/from/:idFrom/to/:idTo", d.TranfersEndPoint)
 	// Start Server
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -464,6 +544,32 @@ func (m *DataObjectAccess) WithDrawBankAccountEndPoint(c echo.Context) (err erro
 
 	PrintLog(bankAccountResp)
 	return c.JSON(http.StatusOK, map[string]string{"result": "Withdraw Success"})
+}
+
+//TranfersEndPoint is TranfersEndPoint
+func (m *DataObjectAccess) TranfersEndPoint(c echo.Context) (err error) {
+	userFrom, err := m.userService.FindByIDUser(c.Param("idFrom"))
+	if err != nil {
+		return err
+	}
+
+	userTo, err := m.userService.FindByIDUser(c.Param("idTo"))
+	if err != nil {
+		return err
+	}
+
+	t := new(model.Tranfer)
+	if err := c.Bind(t); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("json: wrong params: %s", err))
+	}
+
+	userResp, err := m.tranferService.Tranfer(t, userFrom, userTo)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	PrintLog(userResp)
+	return c.JSON(http.StatusOK, map[string]string{"result": "Tranfer Success"})
 }
 
 //ValidateUser for check username and password
