@@ -41,6 +41,8 @@ type BankAccountService interface {
 	CreateBankAccount(bankaccountReq *model.BankAccount, user model.User) ([]model.BankAccount, error)
 	FindAllBankAccount(user model.User) []model.BankAccount
 	DeleteBankAccount(user model.User, id string) (*model.BankAccount, error)
+	DepositBankAccount(tranSaction *model.Transaction, user model.User, id string) (*model.BankAccount, error)
+	WithdrawBankAccount(tranSaction *model.Transaction, user model.User, id string) (*model.BankAccount, error)
 }
 
 //UserServiceImplement is struct
@@ -109,6 +111,70 @@ func (b *BankAccountServiceImplement) DeleteBankAccount(user model.User, id stri
 	user.UserBankAccount = bankAccounts
 	err := b.db.C(COLLECTIONUser).UpdateId(user.ID, &user)
 	return &bankAccount, err
+}
+
+//DepositBankAccount for DepositBankAccount
+func (b *BankAccountServiceImplement) DepositBankAccount(tranSaction *model.Transaction, user model.User, id string) (*model.BankAccount, error) {
+	var bankAccounts []model.BankAccount
+	var bankAccount model.BankAccount
+	var bankAccountHasTransaction model.BankAccount
+	hasBankAccount := false
+
+	if tranSaction.Amount == 0 {
+		return nil, errors.New("please require Amount")
+	}
+	for _, userBankAccountList := range user.UserBankAccount {
+		if userBankAccountList.ID == bson.ObjectIdHex(id) {
+			hasBankAccount = true
+			bankAccount = userBankAccountList
+			bankAccount.Balance = bankAccount.Balance + tranSaction.Amount
+			bankAccountHasTransaction = bankAccount
+			bankAccounts = append(bankAccounts, bankAccount)
+		} else {
+			bankAccount = userBankAccountList
+			bankAccounts = append(bankAccounts, bankAccount)
+		}
+	}
+
+	if !hasBankAccount {
+		return nil, errors.New("Not Have BankAccountID")
+	}
+
+	user.UserBankAccount = bankAccounts
+	err := b.db.C(COLLECTIONUser).UpdateId(user.ID, &user)
+	return &bankAccountHasTransaction, err
+}
+
+//WithdrawBankAccount for WithdrawBankAccount
+func (b *BankAccountServiceImplement) WithdrawBankAccount(tranSaction *model.Transaction, user model.User, id string) (*model.BankAccount, error) {
+	var bankAccounts []model.BankAccount
+	var bankAccount model.BankAccount
+	var bankAccountHasTransaction model.BankAccount
+	hasBankAccount := false
+
+	if tranSaction.Amount == 0 {
+		return nil, errors.New("please require Amount")
+	}
+	for _, userBankAccountList := range user.UserBankAccount {
+		if userBankAccountList.ID == bson.ObjectIdHex(id) {
+			hasBankAccount = true
+			bankAccount = userBankAccountList
+			bankAccount.Balance = bankAccount.Balance - tranSaction.Amount
+			bankAccountHasTransaction = bankAccount
+			bankAccounts = append(bankAccounts, bankAccount)
+		} else {
+			bankAccount = userBankAccountList
+			bankAccounts = append(bankAccounts, bankAccount)
+		}
+	}
+
+	if !hasBankAccount {
+		return nil, errors.New("Not Have BankAccountID")
+	}
+
+	user.UserBankAccount = bankAccounts
+	err := b.db.C(COLLECTIONUser).UpdateId(user.ID, &user)
+	return &bankAccountHasTransaction, err
 }
 
 //FindAllUser for FindAllUser
@@ -226,7 +292,8 @@ func SetUpRoute(d *DataObjectAccess) {
 	user.POST("/:id/bankAccount", d.CreateBankAccountEndPoint)
 	user.GET("/:id/bankAccount", d.FindAllBankAccountEndPoint)
 	user.DELETE("/:id/bankAccount/:idBankAccount", d.DeleteBankAccountEndPoint)
-
+	user.PUT("/:id/bankAccount/:idBankAccount/deposit", d.DepositBankAccountEndPoint)
+	user.PUT("/:id/bankAccount/:idBankAccount/withdraw", d.WithDrawBankAccountEndPoint)
 	// Start Server
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -355,6 +422,48 @@ func (m *DataObjectAccess) DeleteBankAccountEndPoint(c echo.Context) (err error)
 	}
 	PrintLog(bankAccountResp)
 	return c.JSON(http.StatusOK, map[string]string{"result": "Delete Success"})
+}
+
+//DepositBankAccountEndPoint is DepositBankAccountEndPoint
+func (m *DataObjectAccess) DepositBankAccountEndPoint(c echo.Context) (err error) {
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return err
+	}
+
+	t := new(model.Transaction)
+	if err := c.Bind(t); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("json: wrong params: %s", err))
+	}
+
+	bankAccountResp, err := m.bankAccountService.DepositBankAccount(t, user, c.Param("idBankAccount"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	PrintLog(bankAccountResp)
+	return c.JSON(http.StatusOK, map[string]string{"result": "Deposit Success"})
+}
+
+//WithDrawBankAccountEndPoint is WithDrawBankAccountEndPoint
+func (m *DataObjectAccess) WithDrawBankAccountEndPoint(c echo.Context) (err error) {
+	user, err := m.userService.FindByIDUser(c.Param("id"))
+	if err != nil {
+		return err
+	}
+
+	t := new(model.Transaction)
+	if err := c.Bind(t); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("json: wrong params: %s", err))
+	}
+
+	bankAccountResp, err := m.bankAccountService.WithdrawBankAccount(t, user, c.Param("idBankAccount"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	PrintLog(bankAccountResp)
+	return c.JSON(http.StatusOK, map[string]string{"result": "Withdraw Success"})
 }
 
 //ValidateUser for check username and password

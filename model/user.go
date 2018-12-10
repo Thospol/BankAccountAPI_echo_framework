@@ -21,5 +21,9 @@ type BankAccount struct {
 	ID            bson.ObjectId `bson:"_id" json:"id"`
 	BankName      string        `bson:"bank_name" json:"bank_name"`
 	AccountNumber string        `bson:"account_number" json:"account_number"`
-	Balance       int64         `bson:"balance" json:"balance"`
+	Balance       float64       `bson:"balance" json:"balance"`
+}
+
+type Transaction struct {
+	Amount float64 `bson:"amount" json:"amount"`
 }
