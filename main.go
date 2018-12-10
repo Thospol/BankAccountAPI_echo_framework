@@ -39,7 +39,7 @@ type UserService interface {
 
 //BankAccountService is interface
 type BankAccountService interface {
-	CreateBankAccount(bankaccountReq *model.BankAccount, user model.User) ([]model.BankAccount, error)
+	CreateBankAccount(bankaccountReq *model.BankAccount, user model.User, users []model.User) ([]model.BankAccount, error)
 	FindAllBankAccount(user model.User) []model.BankAccount
 	DeleteBankAccount(user model.User, id string) (*model.BankAccount, error)
 	DepositBankAccount(tranSaction *model.Transaction, user model.User, id string) (*model.BankAccount, error)
@@ -130,7 +130,7 @@ func (t *TranferServiceImplement) Tranfer(tranfer *model.Tranfer, userFrom model
 }
 
 //CreateBankAccount for CreateBankAccount
-func (b *BankAccountServiceImplement) CreateBankAccount(bankaccountReq *model.BankAccount, user model.User) ([]model.BankAccount, error) {
+func (b *BankAccountServiceImplement) CreateBankAccount(bankaccountReq *model.BankAccount, user model.User, users []model.User) ([]model.BankAccount, error) {
 	var err error
 
 	if bankaccountReq.BankName == "" {
@@ -143,6 +143,13 @@ func (b *BankAccountServiceImplement) CreateBankAccount(bankaccountReq *model.Ba
 
 	if bankaccountReq.Balance == 0 {
 		return nil, errors.New("please require Balance")
+	}
+	for _, usersList := range users {
+		for _, bankAccountOfuserList := range usersList.UserBankAccount {
+			if bankAccountOfuserList.AccountNumber == bankaccountReq.AccountNumber {
+				return nil, errors.New("AccountNumber Dupicate")
+			}
+		}
 	}
 
 	for _, bankAccountOfuser := range user.UserBankAccount {
@@ -459,6 +466,11 @@ func (m *DataObjectAccess) DeleteUserEndPoint(c echo.Context) (err error) {
 
 //CreateBankAccountEndPoint is CreateBankAccountEndPoint
 func (m *DataObjectAccess) CreateBankAccountEndPoint(c echo.Context) (err error) {
+	users, err := m.userService.FindAllUser()
+	if err != nil {
+		return err
+	}
+
 	user, err := m.userService.FindByIDUser(c.Param("id"))
 	if err != nil {
 		return err
@@ -469,7 +481,7 @@ func (m *DataObjectAccess) CreateBankAccountEndPoint(c echo.Context) (err error)
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("json: wrong params: %s", err))
 	}
 
-	userResp, err := m.bankAccountService.CreateBankAccount(b, user)
+	userResp, err := m.bankAccountService.CreateBankAccount(b, user, users)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
