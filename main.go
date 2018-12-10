@@ -402,7 +402,7 @@ func (m *DataObjectAccess) FindAllUserEndPoint(c echo.Context) (err error) {
 		return err
 	}
 	PrintLog(users)
-	return c.JSON(http.StatusOK, users)
+	return c.JSON(http.StatusOK, MapJSONUser(users))
 }
 
 //FindByIDUserEndPoint is FindByIDUserEndPoint
@@ -413,7 +413,7 @@ func (m *DataObjectAccess) FindByIDUserEndPoint(c echo.Context) (err error) {
 		return err
 	}
 	PrintLog(user)
-	return c.JSON(http.StatusOK, user)
+	return c.JSON(http.StatusOK, MapJSONUser(user))
 }
 
 //InsertUserEndPoint is InsertUserEndPoint
@@ -606,6 +606,14 @@ func PrintLog(n interface{}) {
 func MapJSONBankAccount(bankAccount interface{}) interface{} {
 	dataJSON := map[string]interface{}{
 		"bank_account": bankAccount,
+	}
+	return dataJSON
+}
+
+//MapJSONUser for MapJSONUser
+func MapJSONUser(user interface{}) interface{} {
+	dataJSON := map[string]interface{}{
+		"user": user,
 	}
 	return dataJSON
 }
