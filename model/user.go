@@ -13,7 +13,7 @@ type User struct {
 	Age             int64         `bson:"age" json:"age" binding:"required"`
 	Email           string        `bson:"email" json:"email" binding:"required"`
 	Tel             string        `bson:"tel" json:"tel" binding:"required"`
-	UserBankAccount []BankAccount `bson:"user_bank_account" json:"user_bank_account"`
+	UserBankAccount []BankAccount `bson:"user_bank_account" json:"user_bank_account,omitempty"`
 }
 
 //BankAccount is model
