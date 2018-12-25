@@ -24,10 +24,12 @@ type BankAccount struct {
 	Balance       float64       `bson:"balance" json:"balance"`
 }
 
+//Transaction is model
 type Transaction struct {
 	Amount float64 `bson:"amount" json:"amount"`
 }
 
+//Tranfer is model
 type Tranfer struct {
 	Amount float64 `bson:"amount" json:"amount"`
 	From   string  `bson:"from" json:"from"`
