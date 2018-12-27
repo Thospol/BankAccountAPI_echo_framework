@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"log"
@@ -14,7 +14,7 @@ type Config struct {
 
 //Read is Readfile in config.toml It's have to set server and database
 func (c *Config) Read() {
-	_, err := toml.DecodeFile("config.toml", &c)
+	_, err := toml.DecodeFile("internal/config.toml", &c)
 	if err != nil {
 		log.Fatal(err)
 	}

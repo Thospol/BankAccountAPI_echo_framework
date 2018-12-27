@@ -324,7 +324,7 @@ func (u *UserServiceImplement) DeleteUser(user model.User) (*model.User, error) 
 
 var (
 	dbs    *mgo.Database
-	config = Config{}
+	config = internal.Config{}
 	s      = Server{}
 	e      = echo.New()
 	dao    = &DataObjectAccess{}
