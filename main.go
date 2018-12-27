@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "bankaccountapi/docs"
+	"bankaccountapi/internal"
 	"bankaccountapi/model"
 	"encoding/json"
 	"errors"
@@ -370,8 +371,13 @@ func init() {
 // @BasePath /v1
 func main() {
 	SetUpRoute(dao)
+
 	// Middleware
-	e.Use(middleware.Logger())
+	logger := middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format: internal.LogFormat(),
+		Output: os.Stdout,
+	})
+	e.Use(logger)
 	e.Use(middleware.Recover())
 	e.GET("/swagger/*", echoswagger.WrapHandler)
 

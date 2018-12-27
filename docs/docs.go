@@ -122,7 +122,7 @@ var doc = `{
 	},
         "user/{id}/bankAccount": {
             "get": {
-                "description": "get struct array by ID",
+                "description": "get BankAccount With UserID",
                 "consumes": [
                     "application/json"
                 ],
@@ -131,8 +131,8 @@ var doc = `{
                 ],
                 "parameters": [
                     {
-                        "description": "Some ID",
-                        "name": "some_id",
+                        "description": "BankAccount from UserID",
+                        "name": "{}",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -184,7 +184,7 @@ var doc = `{
 		},
 		"user/{id}/bankAccount{idBankAccount}": {
             "delete": {
-                "description": "get struct array by ID",
+                "description": "Delete BankAccount from UserID",
                 "consumes": [
                     "application/json"
                 ],
@@ -193,8 +193,8 @@ var doc = `{
                 ],
                 "parameters": [
                     {
-                        "description": "Some ID",
-                        "name": "some_id",
+                        "description": "Delete BankAccount from UserID",
+                        "name": "{}",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -246,7 +246,7 @@ var doc = `{
 		},
 		"user/{id}/bankAccount/{idBankAccount}/deposit": {
             "put": {
-                "description": "get struct array by ID",
+                "description": "Deposit Amount To BankAccount of User",
                 "consumes": [
                     "application/json"
                 ],
@@ -255,8 +255,8 @@ var doc = `{
                 ],
                 "parameters": [
                     {
-                        "description": "Some ID",
-                        "name": "some_id",
+                        "description": "Deposit Amount To BankAccoun",
+                        "name": "{}",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -308,7 +308,7 @@ var doc = `{
 		},
 		"user/{id}/bankAccount/{idBankAccount}/withdraw": {
             "put": {
-                "description": "get struct array by ID",
+                "description": "Withdraw Amount To BankAccount of User",
                 "consumes": [
                     "application/json"
                 ],
@@ -317,8 +317,8 @@ var doc = `{
                 ],
                 "parameters": [
                     {
-                        "description": "Some ID",
-                        "name": "some_id",
+                        "description": "Withdraw Amount To BankAccount",
+                        "name": "{}",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -370,7 +370,7 @@ var doc = `{
 		},
 		"tranfers/from/:idFrom/to/:idTo": {
             "post": {
-                "description": "get struct array by ID",
+                "description": "Transer Amount From BankAccount To BankAccount",
                 "consumes": [
                     "application/json"
                 ],
@@ -379,8 +379,8 @@ var doc = `{
                 ],
                 "parameters": [
                     {
-                        "description": "Some ID",
-                        "name": "some_id",
+                        "description": "Transer Amount",
+                        "name": "{}",
                         "in": "path",
                         "required": true,
                         "schema": {
